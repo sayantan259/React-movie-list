@@ -11,7 +11,7 @@ export default function App() {
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [query, setQuery] = useState("interstellar");
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
   function handleMovieSelect(id) {
@@ -33,12 +33,14 @@ export default function App() {
 
   useEffect(
     function () {
+      const controller = new AbortController();
       async function fetchmovies() {
         try {
           setIsLoading(true);
           setError("");
           const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            { signal: controller.signal }
           );
 
           if (!res.ok)
@@ -46,8 +48,9 @@ export default function App() {
           const data = await res.json();
           if (data.Response === "False") throw new Error("Movie Not Found");
           setMovies(data.Search);
+          setError("");
         } catch (err) {
-          setError(err.message);
+          if (err.name !== "AbortError") setError(err.message);
         } finally {
           setIsLoading(false);
         }
@@ -57,7 +60,12 @@ export default function App() {
         setError("");
         return;
       }
+      handleCloseMovie();
       fetchmovies();
+
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -231,19 +239,46 @@ function MovieDetails({ selectedId, onMovieClose, onAddWatched, watched }) {
 
   useEffect(
     function () {
+      function callback(e) {
+        if (e.code === "Escape") {
+          onMovieClose();
+        }
+      }
+
+      document.addEventListener("keydown", callback);
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onMovieClose]
+  );
+
+  useEffect(
+    function () {
       async function getMovieDetails() {
         setIsLoading(true);
         const res = await fetch(
           `http://www.omdbapi.com/?apikey=${KEY}&i=${selectedId}`
         );
         const data = await res.json();
-        console.log(data);
         setMovie(data);
         setIsLoading(false);
       }
       getMovieDetails();
     },
     [selectedId]
+  );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie | ${title}`;
+
+      return function () {
+        document.title = "movieList";
+      };
+    },
+    [title]
   );
 
   return (

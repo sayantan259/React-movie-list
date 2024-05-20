@@ -44,7 +44,7 @@ export default function StarRating({
       <div style={starContainerStyle}>
         {Array.from({ length: maxRating }, (_, i) => (
           <Star
-            kay={i}
+            kay={1 * 452}
             color={color}
             size={size}
             onRate={() => handleRating(i + 1)}
